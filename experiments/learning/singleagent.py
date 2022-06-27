@@ -63,6 +63,7 @@ DEFAULT_ACT = ActionType('one_d_rpm')
 DEFAULT_CPU = 1
 DEFAULT_STEPS = 35000
 DEFAULT_OUTPUT_FOLDER = 'results'
+DEFAULT_DEVICE = "cpu"  # "cuda"
 
 def run(
     env=DEFAULT_ENV,
@@ -71,7 +72,8 @@ def run(
     act=DEFAULT_ACT,
     cpu=DEFAULT_CPU,
     steps=DEFAULT_STEPS,
-    output_folder=DEFAULT_OUTPUT_FOLDER
+    output_folder=DEFAULT_OUTPUT_FOLDER,
+    device=DEFAULT_DEVICE
 ):
 
     #### Save directory ########################################
@@ -144,7 +146,8 @@ def run(
                     train_env,
                     policy_kwargs=onpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
-                    verbose=1
+                    verbose=1,
+                    device=device
                     ) if obs == ObservationType.KIN else A2C(a2cppoCnnPolicy,
                                                                   train_env,
                                                                   policy_kwargs=onpolicy_kwargs,
@@ -156,7 +159,8 @@ def run(
                     train_env,
                     policy_kwargs=onpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
-                    verbose=1
+                    verbose=1,
+                    device=device
                     ) if obs == ObservationType.KIN else PPO(a2cppoCnnPolicy,
                                                                   train_env,
                                                                   policy_kwargs=onpolicy_kwargs,
@@ -173,7 +177,8 @@ def run(
                     train_env,
                     policy_kwargs=offpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
-                    verbose=1
+                    verbose=1,
+                    device=device
                     ) if obs==ObservationType.KIN else SAC(sacCnnPolicy,
                                                                 train_env,
                                                                 policy_kwargs=offpolicy_kwargs,
@@ -185,7 +190,8 @@ def run(
                     train_env,
                     policy_kwargs=offpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
-                    verbose=1
+                    verbose=1,
+                    device=device
                     ) if obs==ObservationType.KIN else TD3(td3ddpgCnnPolicy,
                                                                 train_env,
                                                                 policy_kwargs=offpolicy_kwargs,
@@ -197,7 +203,8 @@ def run(
                     train_env,
                     policy_kwargs=offpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
-                    verbose=1
+                    verbose=1,
+                    device=device
                     ) if obs==ObservationType.KIN else DDPG(td3ddpgCnnPolicy,
                                                                 train_env,
                                                                 policy_kwargs=offpolicy_kwargs,
