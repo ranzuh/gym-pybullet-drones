@@ -47,6 +47,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback,
 
 from gym_pybullet_drones.envs.single_agent_rl.TakeoffAviary import TakeoffAviary
 from gym_pybullet_drones.envs.single_agent_rl.HoverAviary import HoverAviary
+from gym_pybullet_drones.envs.single_agent_rl.PositionAviary import PositionAviary
 from gym_pybullet_drones.envs.single_agent_rl.FlyThruGateAviary import FlyThruGateAviary
 from gym_pybullet_drones.envs.single_agent_rl.TuneAviary import TuneAviary
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType, ObservationType
@@ -56,7 +57,7 @@ import shared_constants
 EPISODE_REWARD_THRESHOLD = -0 # Upperbound: rewards are always negative, but non-zero
 """float: Reward threshold to halt the script."""
 
-DEFAULT_ENV = 'hover'
+DEFAULT_ENV = 'position'
 DEFAULT_ALGO = 'ppo'
 DEFAULT_OBS = ObservationType('kin')
 DEFAULT_ACT = ActionType('one_d_rpm')
@@ -93,7 +94,7 @@ def run(
     if act == ActionType.ONE_D_RPM or act == ActionType.ONE_D_DYN or act == ActionType.ONE_D_PID:
         print("\n\n\n[WARNING] Simplified 1D problem for debugging purposes\n\n\n")
     #### Errors ################################################
-        if not env in ['takeoff', 'hover']: 
+        if not env in ['takeoff', 'hover', 'position']:
             print("[ERROR] 1D action space is only compatible with Takeoff and HoverAviary")
             exit()
     if act == ActionType.TUN and env != 'tune' :
@@ -129,6 +130,12 @@ def run(
                                  )
     if env_name == "tune-aviary-v0":
         train_env = make_vec_env(TuneAviary,
+                                 env_kwargs=sa_env_kwargs,
+                                 n_envs=cpu,
+                                 seed=0
+                                 )
+    if env_name == "position-aviary-v0":
+        train_env = make_vec_env(PositionAviary,
                                  env_kwargs=sa_env_kwargs,
                                  n_envs=cpu,
                                  seed=0
@@ -278,7 +285,7 @@ def run(
 if __name__ == "__main__":
     #### Define and parse (optional) arguments for the script ##
     parser = argparse.ArgumentParser(description='Single agent reinforcement learning experiments script')
-    parser.add_argument('--env',        default=DEFAULT_ENV,      type=str,             choices=['takeoff', 'hover', 'flythrugate', 'tune'], help='Task (default: hover)', metavar='')
+    parser.add_argument('--env',        default=DEFAULT_ENV,      type=str,             choices=['takeoff', 'hover', 'flythrugate', 'tune', 'position'], help='Task (default: hover)', metavar='')
     parser.add_argument('--algo',       default=DEFAULT_ALGO,        type=str,             choices=['a2c', 'ppo', 'sac', 'td3', 'ddpg'],        help='RL agent (default: ppo)', metavar='')
     parser.add_argument('--obs',        default=DEFAULT_OBS,        type=ObservationType,                                                      help='Observation space (default: kin)', metavar='')
     parser.add_argument('--act',        default=DEFAULT_ACT,  type=ActionType,                                                           help='Action space (default: one_d_rpm)', metavar='')

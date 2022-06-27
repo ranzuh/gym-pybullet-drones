@@ -43,6 +43,11 @@ register(
     entry_point='gym_pybullet_drones.envs.single_agent_rl:TuneAviary',
 )
 
+register(
+    id='position-aviary-v0',
+    entry_point='gym_pybullet_drones.envs.single_agent_rl:PositionAviary',
+)
+
 
 
 
