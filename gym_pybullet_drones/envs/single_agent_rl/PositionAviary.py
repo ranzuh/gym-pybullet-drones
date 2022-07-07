@@ -1,4 +1,5 @@
 import numpy as np
+from gym import spaces
 
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.single_agent_rl.BaseSingleAgentAviary import ActionType, ObservationType, BaseSingleAgentAviary
@@ -18,7 +19,9 @@ class PositionAviary(BaseSingleAgentAviary):
                  gui=False,
                  record=False, 
                  obs: ObservationType=ObservationType.KIN,
-                 act: ActionType=ActionType.RPM
+                 act: ActionType=ActionType.RPM,
+                 normalize_obs=True  # If set to False, check that observation space is changed accordingly (-1,1) might
+                                     # not be good then.
                  ):
         """Initialization of a single agent RL environment.
 
@@ -57,10 +60,59 @@ class PositionAviary(BaseSingleAgentAviary):
                          gui=gui,
                          record=record,
                          obs=obs,
-                         act=act
+                         act=act,
+                         normalize_obs=normalize_obs
                          )
 
     ################################################################################
+
+    def _observationSpace(self):
+        """Returns the observation space of the environment.
+
+        Returns
+        -------
+        ndarray
+            A Box() of shape (H,W,4) or (12,) depending on the observation type.
+
+        """
+        if self.OBS_TYPE == ObservationType.RGB:
+            return spaces.Box(low=0,
+                              high=255,
+                              shape=(self.IMG_RES[1], self.IMG_RES[0], 4),
+                              dtype=np.uint8
+                              )
+        elif self.OBS_TYPE == ObservationType.KIN:
+            return spaces.Box(low=np.array([-1, -1, 0, -1, -1, -1]),
+                              high=np.array([1, 1, 1, 1, 1, 1]),
+                              dtype=np.float32
+                              )
+            ############################################################
+        else:
+            print("[ERROR] in BaseSingleAgentAviary._observationSpace()")
+
+    def _computeObs(self):
+        """Returns the current observation of the environment.
+
+        Returns
+        -------
+        ndarray
+            A Box() of shape (H,W,4) or (12,) depending on the observation type.
+
+        """
+
+        if self.normalize_obs:
+            obs = self._clipAndNormalizeState(self._getDroneStateVector(0))
+        else:
+            obs = self._getDroneStateVector(0)
+        ############################################################
+        #### OBS OF SIZE 20 (WITH QUATERNION AND RPMS)
+        # return obs
+        ############################################################
+        #### OBS SPACE OF SIZE 12
+        ret = np.hstack([obs[0:3], obs[10:13]]).reshape(6, )
+
+        return ret.astype('float32')
+        ############################################################
     
     def _computeReward(self):
         """Computes the current reward value.
@@ -85,7 +137,7 @@ class PositionAviary(BaseSingleAgentAviary):
             Whether the current episode is done.
 
         """
-        if self.step_counter/self.SIM_FREQ > self.EPISODE_LEN_SEC:
+        if self.step_counter/self.SIM_FREQ > self.EPISODE_LEN_SEC:  # or self._getDroneStateVector(0)[2] < 0.05:
             return True
         else:
             return False

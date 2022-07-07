@@ -59,7 +59,7 @@ def run(exp, gui=DEFAULT_GUI, plot=DEFAULT_PLOT, output_folder=DEFAULT_OUTPUT_FO
     if algo == 'a2c':
         model = A2C.load(path)
     if algo == 'ppo':
-        model = PPO.load(path)
+        model = PPO.load(path, device='cpu')
     if algo == 'sac':
         model = SAC.load(path)
     if algo == 'td3':
@@ -86,6 +86,8 @@ def run(exp, gui=DEFAULT_GUI, plot=DEFAULT_PLOT, output_folder=DEFAULT_OUTPUT_FO
         ACT = ActionType.ONE_D_DYN
     elif exp.split("-")[4] == 'one_d_pid':
         ACT = ActionType.ONE_D_PID
+    elif exp.split("-")[4] == 'discrete':
+        ACT = ActionType.DISCRETE
 
     #### Evaluate the model ####################################
     eval_env = gym.make(env_name,
@@ -119,12 +121,12 @@ def run(exp, gui=DEFAULT_GUI, plot=DEFAULT_PLOT, output_folder=DEFAULT_OUTPUT_FO
                                         )
         obs, reward, done, info = test_env.step(action)
         test_env.render()
-        if OBS==ObservationType.KIN:
-            logger.log(drone=0,
-                       timestamp=i/test_env.SIM_FREQ,
-                       state= np.hstack([obs[0:3], np.zeros(4), obs[3:15],  np.resize(action, (4))]),
-                       control=np.zeros(12)
-                       )
+        # if OBS==ObservationType.KIN:
+        #     logger.log(drone=0,
+        #                timestamp=i/test_env.SIM_FREQ,
+        #                state= np.hstack([obs[0:3], np.zeros(4), obs[3:15],  np.resize(action, (4))]),
+        #                control=np.zeros(12)
+        #                )
         sync(np.floor(i*test_env.AGGR_PHY_STEPS), start, test_env.TIMESTEP)
         # if done: obs = test_env.reset() # OPTIONAL EPISODE HALT
     test_env.close()

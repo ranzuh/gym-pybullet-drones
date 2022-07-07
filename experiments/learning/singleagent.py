@@ -60,9 +60,9 @@ EPISODE_REWARD_THRESHOLD = -0 # Upperbound: rewards are always negative, but non
 DEFAULT_ENV = 'position'
 DEFAULT_ALGO = 'ppo'
 DEFAULT_OBS = ObservationType('kin')
-DEFAULT_ACT = ActionType('one_d_rpm')
+DEFAULT_ACT = ActionType('vel')  # one_d_rpm
 DEFAULT_CPU = 1
-DEFAULT_STEPS = 35000
+DEFAULT_STEPS = 50000
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_DEVICE = "cpu"  # "cuda"
 
@@ -167,7 +167,8 @@ def run(
                     policy_kwargs=onpolicy_kwargs,
                     tensorboard_log=filename+'/tb/',
                     verbose=1,
-                    device=device
+                    device=device,
+                    ent_coef=0.0
                     ) if obs == ObservationType.KIN else PPO(a2cppoCnnPolicy,
                                                                   train_env,
                                                                   policy_kwargs=onpolicy_kwargs,
@@ -224,7 +225,8 @@ def run(
         eval_env = gym.make(env_name,
                             aggregate_phy_steps=shared_constants.AGGR_PHY_STEPS,
                             obs=obs,
-                            act=act
+                            act=act,
+                            gui=False
                             )
     elif obs == ObservationType.RGB:
         if env_name == "takeoff-aviary-v0": 

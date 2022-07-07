@@ -20,6 +20,7 @@ class ActionType(Enum):
     ONE_D_RPM = "one_d_rpm"     # 1D (identical input to all motors) with RPMs
     ONE_D_DYN = "one_d_dyn"     # 1D (identical input to all motors) with desired thrust and torques
     ONE_D_PID = "one_d_pid"     # 1D (identical input to all motors) with PID control
+    DISCRETE = "discrete"
 
 ################################################################################
 
@@ -45,7 +46,8 @@ class BaseSingleAgentAviary(BaseAviary):
                  gui=False,
                  record=False, 
                  obs: ObservationType=ObservationType.KIN,
-                 act: ActionType=ActionType.RPM
+                 act: ActionType=ActionType.RPM,
+                 normalize_obs=True
                  ):
         """Initialization of a generic single agent RL environment.
 
@@ -83,8 +85,9 @@ class BaseSingleAgentAviary(BaseAviary):
         self.OBS_TYPE = obs
         self.ACT_TYPE = act
         self.EPISODE_LEN_SEC = 5
+        self.normalize_obs = normalize_obs
         #### Create integrated controllers #########################
-        if act in [ActionType.PID, ActionType.VEL, ActionType.TUN, ActionType.ONE_D_PID]:
+        if act in [ActionType.PID, ActionType.VEL, ActionType.TUN, ActionType.ONE_D_PID, ActionType.DISCRETE]:
             os.environ['KMP_DUPLICATE_LIB_OK']='True'
             if drone_model in [DroneModel.CF2X, DroneModel.CF2P]:
                 self.ctrl = DSLPIDControl(drone_model=DroneModel.CF2X)
@@ -121,7 +124,7 @@ class BaseSingleAgentAviary(BaseAviary):
                          dynamics_attributes=dynamics_attributes
                          )
         #### Set a limit on the maximum target speed ###############
-        if act == ActionType.VEL:
+        if act == ActionType.VEL or act == ActionType.DISCRETE:
             self.SPEED_LIMIT = 0.03 * self.MAX_SPEED_KMH * (1000/3600)
         #### Try _trajectoryTrackingRPMs exists IFF ActionType.TUN #
         if act == ActionType.TUN and not (hasattr(self.__class__, '_trajectoryTrackingRPMs') and callable(getattr(self.__class__, '_trajectoryTrackingRPMs'))):
@@ -180,6 +183,8 @@ class BaseSingleAgentAviary(BaseAviary):
             size = 3
         elif self.ACT_TYPE in [ActionType.ONE_D_RPM, ActionType.ONE_D_DYN, ActionType.ONE_D_PID]:
             size = 1
+        elif self.ACT_TYPE == ActionType.DISCRETE:
+            return spaces.Discrete(3)
         else:
             print("[ERROR] in BaseSingleAgentAviary._actionSpace()")
             exit()
@@ -261,7 +266,8 @@ class BaseSingleAgentAviary(BaseAviary):
                                                  cur_ang_vel=state[13:16],
                                                  target_pos=state[0:3], # same as the current position
                                                  target_rpy=np.array([0,0,state[9]]), # keep current yaw
-                                                 target_vel=self.SPEED_LIMIT * np.abs(action[3]) * v_unit_vector # target the desired velocity vector
+                                                 #target_vel=self.SPEED_LIMIT * np.abs(action[3]) * v_unit_vector # target the desired velocity vector
+                                                 target_vel=np.abs(action[3]) * v_unit_vector # target the desired velocity vector
                                                  )
             return rpm
         elif self.ACT_TYPE == ActionType.ONE_D_RPM:
@@ -288,6 +294,27 @@ class BaseSingleAgentAviary(BaseAviary):
                                                  cur_vel=state[10:13],
                                                  cur_ang_vel=state[13:16],
                                                  target_pos=state[0:3]+0.1*np.array([0,0,action[0]])
+                                                 )
+            return rpm
+        elif self.ACT_TYPE == ActionType.DISCRETE:
+            state = self._getDroneStateVector(0)
+            v_unit_vector = None
+            if action == 0:  # stay still
+                v_unit_vector = np.array([0.0, 0.0, 0.0])
+            elif action == 1:  # move up
+                v_unit_vector = np.array([0.0, 0.0, 1.0])
+            elif action == 2:  # move down
+                v_unit_vector = np.array([0.0, 0.0, -1.0])
+            #print("pos", state[0:3], "action", v_unit_vector)
+            rpm, _, _ = self.ctrl.computeControl(control_timestep=self.AGGR_PHY_STEPS * self.TIMESTEP,
+                                                 cur_pos=state[0:3],
+                                                 cur_quat=state[3:7],
+                                                 cur_vel=state[10:13],
+                                                 cur_ang_vel=state[13:16],
+                                                 target_pos=state[0:3],  # same as the current position
+                                                 target_rpy=np.array([0, 0, state[9]]),  # keep current yaw
+                                                 target_vel=v_unit_vector
+                                                 # target the desired velocity vector
                                                  )
             return rpm
         else:
@@ -351,8 +378,11 @@ class BaseSingleAgentAviary(BaseAviary):
                                       frame_num=int(self.step_counter/self.IMG_CAPTURE_FREQ)
                                       )
             return self.rgb[0]
-        elif self.OBS_TYPE == ObservationType.KIN: 
-            obs = self._clipAndNormalizeState(self._getDroneStateVector(0))
+        elif self.OBS_TYPE == ObservationType.KIN:
+            if self.normalize_obs:
+                obs = self._clipAndNormalizeState(self._getDroneStateVector(0))
+            else:
+                obs = self._getDroneStateVector(0)
             ############################################################
             #### OBS OF SIZE 20 (WITH QUATERNION AND RPMS)
             # return obs
