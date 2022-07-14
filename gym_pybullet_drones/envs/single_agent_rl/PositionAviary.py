@@ -63,6 +63,7 @@ class PositionAviary(BaseSingleAgentAviary):
                          act=act,
                          normalize_obs=normalize_obs
                          )
+        self.EPISODE_LEN_SEC = 10
 
     ################################################################################
 
@@ -82,8 +83,8 @@ class PositionAviary(BaseSingleAgentAviary):
                               dtype=np.uint8
                               )
         elif self.OBS_TYPE == ObservationType.KIN:
-            return spaces.Box(low=np.array([-1, -1, 0, -1, -1, -1]),
-                              high=np.array([1, 1, 1, 1, 1, 1]),
+            return spaces.Box(low=np.array([-1, -1, 0, -1, -1, -1, -1, -1, -1]),
+                              high=np.array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
                               dtype=np.float32
                               )
             ############################################################
@@ -109,7 +110,14 @@ class PositionAviary(BaseSingleAgentAviary):
         # return obs
         ############################################################
         #### OBS SPACE OF SIZE 12
-        ret = np.hstack([obs[0:3], obs[10:13]]).reshape(6, )
+        target_dir = np.array([0, 0, 1])-self._getDroneStateVector(0)[0:3]
+        if np.linalg.norm(target_dir) != 0:
+            target_dir = target_dir / np.linalg.norm(target_dir)
+        else:
+            target_dir = np.zeros(3)
+        #print(target_dir)
+        #ret = np.hstack([obs[0:3], obs[10:13]]).reshape(6, )
+        ret = np.hstack([obs[0:3], obs[10:13], target_dir]).reshape(9, )
 
         return ret.astype('float32')
         ############################################################
@@ -178,8 +186,11 @@ class PositionAviary(BaseSingleAgentAviary):
         MAX_LIN_VEL_XY = 3 
         MAX_LIN_VEL_Z = 1
 
-        MAX_XY = MAX_LIN_VEL_XY*self.EPISODE_LEN_SEC
-        MAX_Z = MAX_LIN_VEL_Z*self.EPISODE_LEN_SEC
+        #MAX_XY = MAX_LIN_VEL_XY * self.EPISODE_LEN_SEC
+        #MAX_Z = MAX_LIN_VEL_Z*self.EPISODE_LEN_SEC
+
+        MAX_XY = 10
+        MAX_Z = 5
 
         MAX_PITCH_ROLL = np.pi # Full range
 

@@ -62,9 +62,10 @@ DEFAULT_ALGO = 'ppo'
 DEFAULT_OBS = ObservationType('kin')
 DEFAULT_ACT = ActionType('vel')  # one_d_rpm
 DEFAULT_CPU = 1
-DEFAULT_STEPS = 50000
+DEFAULT_STEPS = 1000000
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_DEVICE = "cpu"  # "cuda"
+DEFAULT_RENDER_EVAL = False
 
 def run(
     env=DEFAULT_ENV,
@@ -145,8 +146,11 @@ def run(
     # check_env(train_env, warn=True, skip_render_check=True)
     
     #### On-policy algorithms ##################################
-    onpolicy_kwargs = dict(activation_fn=torch.nn.ReLU,
-                           net_arch=[512, 512, dict(vf=[256, 128], pi=[256, 128])]
+    # onpolicy_kwargs = dict(activation_fn=torch.nn.ReLU,
+    #                       net_arch=[128, 128]
+    #                       ) # or None
+    onpolicy_kwargs = dict(activation_fn=torch.nn.Tanh,
+                           net_arch=[dict(vf=[62, 62], pi=[62, 62])],
                            ) # or None
     if algo == 'a2c':
         model = A2C(a2cppoMlpPolicy,
@@ -168,7 +172,8 @@ def run(
                     tensorboard_log=filename+'/tb/',
                     verbose=1,
                     device=device,
-                    ent_coef=0.0
+                    ent_coef=0.0,
+                    target_kl=0.2
                     ) if obs == ObservationType.KIN else PPO(a2cppoCnnPolicy,
                                                                   train_env,
                                                                   policy_kwargs=onpolicy_kwargs,
@@ -226,7 +231,7 @@ def run(
                             aggregate_phy_steps=shared_constants.AGGR_PHY_STEPS,
                             obs=obs,
                             act=act,
-                            gui=False
+                            gui=DEFAULT_RENDER_EVAL
                             )
     elif obs == ObservationType.RGB:
         if env_name == "takeoff-aviary-v0": 
@@ -267,8 +272,9 @@ def run(
                                  log_path=filename+'/',
                                  eval_freq=int(2000/cpu),
                                  deterministic=True,
-                                 render=False
+                                 render=DEFAULT_RENDER_EVAL
                                  )
+    #model.set_parameters("./results/save-position-ppo-kin-vel-07.07.2022_14.52.19/best_model.zip", device='cpu')
     model.learn(total_timesteps=steps, #int(1e12),
                 callback=eval_callback,
                 log_interval=100,

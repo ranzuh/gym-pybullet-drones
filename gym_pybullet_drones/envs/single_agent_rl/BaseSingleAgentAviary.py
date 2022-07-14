@@ -184,7 +184,7 @@ class BaseSingleAgentAviary(BaseAviary):
         elif self.ACT_TYPE in [ActionType.ONE_D_RPM, ActionType.ONE_D_DYN, ActionType.ONE_D_PID]:
             size = 1
         elif self.ACT_TYPE == ActionType.DISCRETE:
-            return spaces.Discrete(3)
+            return spaces.Discrete(27)
         else:
             print("[ERROR] in BaseSingleAgentAviary._actionSpace()")
             exit()
@@ -299,12 +299,24 @@ class BaseSingleAgentAviary(BaseAviary):
         elif self.ACT_TYPE == ActionType.DISCRETE:
             state = self._getDroneStateVector(0)
             v_unit_vector = None
-            if action == 0:  # stay still
-                v_unit_vector = np.array([0.0, 0.0, 0.0])
-            elif action == 1:  # move up
-                v_unit_vector = np.array([0.0, 0.0, 1.0])
-            elif action == 2:  # move down
-                v_unit_vector = np.array([0.0, 0.0, -1.0])
+
+            action_string = np.base_repr(action, base=3).rjust(3, '0')
+            action_string = ' '.join(action_string)
+            action_vec = np.fromstring(action_string, dtype=float, sep=' ')
+            # [x, y, z]
+            # value = action for this coord
+            # 0     = -1
+            # 1     = 0
+            # 2     = +1
+            action_vec -= 1.0
+            #print(action_vec)
+
+            # if action == 0:  # stay still
+            #     v_unit_vector = np.array([0.0, 0.0, 0.0])
+            # elif action == 1:  # move up
+            #     v_unit_vector = np.array([0.0, 0.0, 1.0])
+            # elif action == 2:  # move down
+            #     v_unit_vector = np.array([0.0, 0.0, -1.0])
             #print("pos", state[0:3], "action", v_unit_vector)
             rpm, _, _ = self.ctrl.computeControl(control_timestep=self.AGGR_PHY_STEPS * self.TIMESTEP,
                                                  cur_pos=state[0:3],
@@ -313,7 +325,8 @@ class BaseSingleAgentAviary(BaseAviary):
                                                  cur_ang_vel=state[13:16],
                                                  target_pos=state[0:3],  # same as the current position
                                                  target_rpy=np.array([0, 0, state[9]]),  # keep current yaw
-                                                 target_vel=v_unit_vector
+                                                 target_vel=0.5*action_vec
+                                                 #arget_vel=v_unit_vector
                                                  # target the desired velocity vector
                                                  )
             return rpm
